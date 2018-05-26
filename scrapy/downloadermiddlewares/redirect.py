@@ -1,5 +1,5 @@
 import logging
-from six.moves.urllib.parse import urljoin
+from six.moves.urllib.parse import urljoin, urlparse
 
 from w3lib.url import safe_url_string
 
@@ -39,6 +39,9 @@ class BaseRedirectMiddleware(object):
             logger.debug("Redirecting (%(reason)s) to %(redirected)s from %(request)s",
                          {'reason': reason, 'redirected': redirected, 'request': request},
                          extra={'spider': spider})
+
+            if self._redirected_to_new_domain(request, redirected):
+                redirected.meta.pop('download_slot', None)
             return redirected
         else:
             logger.debug("Discarding %(request)s: max redirections reached",
@@ -50,6 +53,11 @@ class BaseRedirectMiddleware(object):
         redirected.headers.pop('Content-Type', None)
         redirected.headers.pop('Content-Length', None)
         return redirected
+
+    @staticmethod
+    def _redirected_to_new_domain(request, location):
+        current_domain, location_domain = urlparse(request.url).hostname, urlparse(location.url).hostname
+        return current_domain != location_domain
 
 
 class RedirectMiddleware(BaseRedirectMiddleware):
